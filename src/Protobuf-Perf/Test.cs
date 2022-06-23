@@ -28,13 +28,10 @@ namespace ConsoleApp
                 };
             }
 
-            [ProtoMember(1)]
+            [ProtoMember(10)]
             public string Value;
 
-            /// <summary>
-            ///
-            /// </summary>
-            [global::ProtoBuf.ProtoMember(2, Name = @"longs", DataFormat = global::ProtoBuf.DataFormat.ZigZag, Options = global::ProtoBuf.MemberSerializationOptions.Packed)]
+            [global::ProtoBuf.ProtoMember(20, Name = @"longs", DataFormat = global::ProtoBuf.DataFormat.ZigZag, Options = global::ProtoBuf.MemberSerializationOptions.Packed)]
             public global::System.Collections.Generic.List<long> Longs;
 
             void IMessage<Test>.MergeFrom(Test message)

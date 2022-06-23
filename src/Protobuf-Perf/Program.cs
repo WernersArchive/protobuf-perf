@@ -12,6 +12,7 @@ namespace ConsoleApp
     public partial class Program
     {
         private const int ObjectsForTesting = 1000000;
+
         private static void Main(string[] args)
         {
             Console.WriteLine("Protobuf-Net Performance Investigations v1.2.0");
@@ -42,9 +43,6 @@ namespace ConsoleApp
                     googleProtobufTestData.Add(buffer);
                 }
             }
-
-
-
 
             var warmupOutput = new Test[ObjectsForTesting];
 
@@ -193,7 +191,6 @@ namespace ConsoleApp
                 return true;
             }).All(_ => _);
             Console.WriteLine(watch.ElapsedMilliseconds.ToString() + "ms");
-
         }
 
         private static T NetDeserialize<T>(byte[] buffer)
@@ -218,7 +215,7 @@ namespace ConsoleApp
             }
         }
 
-        private static Test ConstructionWork(byte[] buffer) 
+        private static Test ConstructionWork(byte[] buffer)
         {
             for (int i = 0; i < 1000; i++)
             {
