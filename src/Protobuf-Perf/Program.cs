@@ -12,8 +12,8 @@ namespace ConsoleApp
     {
         private static void Main(string[] args)
         {
-            Console.WriteLine("Protobuf-Net Performance Investigations v1.0.0");
-            Console.WriteLine(System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription + " on " + System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier + " with " + Environment.ProcessorCount.ToString() + " cores");
+            Console.WriteLine("Protobuf-Net Performance Investigations v1.1.0");
+            Console.WriteLine("  " + System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription + " on " + System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier + " with " + Environment.ProcessorCount.ToString() + " cores");
             Console.WriteLine();
             Serializer.PrepareSerializer<Test>();
             var list = new List<byte[]>();
@@ -91,6 +91,24 @@ namespace ConsoleApp
                 return true;
             }).All(_ => _);
             Console.WriteLine(watch.ElapsedMilliseconds.ToString() + "ms");
+
+            Console.Write("without AsParallel (ConstructionWork): ");
+            watch.Restart();
+            list.Select((x, i) =>
+            {
+                output[i] = ConstructionWork<Test>(x);
+                return true;
+            }).All(_ => _);
+            Console.WriteLine(watch.ElapsedMilliseconds.ToString() + "ms");
+
+            Console.Write("   with AsParallel (ConstructionWork): ");
+            watch.Restart();
+            list.AsParallel().WithExecutionMode(ParallelExecutionMode.ForceParallelism).Select((x, i) =>
+            {
+                output[i] = ConstructionWork<Test>(x);
+                return true;
+            }).All(_ => _);
+            Console.WriteLine(watch.ElapsedMilliseconds.ToString() + "ms");
         }
 
         private static T Deserialize<T>(byte[] buffer)
@@ -102,9 +120,21 @@ namespace ConsoleApp
         {
             using (var ms = new MemoryStream(buffer))
             {
-                for (int i = 0; i < 10000; i++) { var x = 100 / 10; }
+                for (int i = 0; i < 10000; i++)
+                {
+                    var x = 100 / 10;
+                }
                 return default(T);
             }
+        }
+
+        private static T ConstructionWork<T>(byte[] buffer) where T : class, new()
+        {
+            for (int i = 0; i < 1000; i++)
+            {
+                var x = new T();
+            }
+            return default(T);
         }
 
         [ProtoContract]
