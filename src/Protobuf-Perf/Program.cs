@@ -15,7 +15,6 @@ namespace ConsoleApp
 {
     public partial class Program
     {
-        private const int ObjectsForTesting = 2000000;
         private const bool SkipGoogle = true;
         private const bool SkipOthers = false;
 
@@ -32,12 +31,13 @@ namespace ConsoleApp
         }
 
         public static bool ThreadLocalTypeModel { get; set; } = true;
+        public static bool IsLockFree { get; set; } = false;
+
+        public static int ObjectsForTesting { get; set; } = 2000000;
 
         private static void Main(string[] args)
         {
-            Console.WriteLine("Protobuf-Net Performance Investigations v1.4.0");
-            Console.WriteLine("  " + System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription + " on " + System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier + " with " + Environment.ProcessorCount.ToString() + " cores");
-            Console.WriteLine($"  Objects: {ObjectsForTesting.ToString("##,###,###,##0")}");
+            Console.WriteLine("Protobuf-Net Performance Investigations v1.5.1");
             Console.WriteLine();
             foreach (string s in args)
             {
@@ -48,27 +48,36 @@ namespace ConsoleApp
                     {
                         ThreadLocalTypeModel = bool.Parse(splits[1]);
                     }
+                    if (string.Equals(splits[0], "Objects", StringComparison.OrdinalIgnoreCase))
+                    {
+                        ObjectsForTesting = int.Parse(splits[1])*1000;
+                    }
+
+                    if (string.Equals(splits[0], "IsLockFree", StringComparison.OrdinalIgnoreCase))
+                    {
+                        IsLockFree = bool.Parse(splits[1]);
+                    }
                 }
             }
 
-            if (ThreadLocalTypeModel)
-            {
-                Console.WriteLine("  One TypeModel per Thread");
-            }
-            else
-            {
-                Console.WriteLine("  One SHARED TypeModel for all Threads");
-            }
+            Console.WriteLine($"  Framework={System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription}");
+            Console.WriteLine($"  Runtime={System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier}");
+            Console.WriteLine($"  ProcessorCount={System.Environment.ProcessorCount}");
+            Console.WriteLine($"  Objects={ObjectsForTesting.ToString("##,###,###,##0")}");
+            Console.WriteLine($"  ThreadLocalTypeModel={ThreadLocalTypeModel}");
+            Console.WriteLine($"  IsLockFree={IsLockFree}");
+
             Console.WriteLine();
 
             //protobuf-net preparations
-            Serializer.PrepareSerializer<Test>();
+
             var protobufNetTestData = new List<byte[]>();
             for (int i = 0; i < ObjectsForTesting; i++)
             {
                 using (var ms = new MemoryStream())
                 {
-                    Serializer.Serialize<Test>(ms, Test.Create(i.ToString()));
+                    ThreadRTM.Value.Serialize<Test>(ms, Test.Create(i.ToString()));
+                    //Serializer.Serialize<Test>(ms, Test.Create(i.ToString()));
                     protobufNetTestData.Add(ms.ToArray());
                 }
             }
@@ -249,17 +258,19 @@ namespace ConsoleApp
 
         private static ThreadLocal<RuntimeTypeModel> ThreadRTM = new ThreadLocal<RuntimeTypeModel>(() =>
         {
+            RuntimeTypeModel rt;
             if (ThreadLocalTypeModel)
             {
-                var rt = RuntimeTypeModel.Create($"ThreadID={Environment.CurrentManagedThreadId}");
+                rt = RuntimeTypeModel.Create($"ThreadID={Environment.CurrentManagedThreadId}", lockFree:IsLockFree);
                 rt.Add(typeof(Test), true);
-                //Console.WriteLine($"RuntimeTypeModel: {rt.ToString()}");
-                return rt;
             }
             else
             {
-                return RuntimeTypeModel.Default;
+                rt = RuntimeTypeModel.Default;
             }
+            rt[typeof(Test)].CompileInPlace();
+            return rt;
+
         });
 
         private static T NetDeserialize<T>(byte[] buffer)
