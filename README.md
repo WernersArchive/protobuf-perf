@@ -22,3 +22,11 @@ The same test with 4 Mio objects:
 
 The red area is the overprovisioning with Degree=20, this is ok!
 Basically the overall CPU usage is growing from 10% to 20% (8% to 22% if we like to read ist very optimistic) between degree=1 and degree=16
+
+### Interesting!!
+
+Modified the runtimeModel: it returns the provided InitValue withoud using real "deserializer" with the following results on my laptop (Processorcount=8, Hyperthreads and Turbo Booster)
+
+![image](https://user-images.githubusercontent.com/10084630/175536394-a9ff208f-0c34-49e6-a8cd-c6e603cce7a5.png)
+
+Speed is growing until 8 cores
