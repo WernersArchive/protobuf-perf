@@ -3,21 +3,62 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Google.Protobuf;
 using ProtoBuf;
+using ProtoBuf.Meta;
+
+#pragma warning disable CS0162 // Unreachable code detected
 
 namespace ConsoleApp
 {
     public partial class Program
     {
-        private const int ObjectsForTesting = 1000000;
+        private const int ObjectsForTesting = 2000000;
+        private const bool SkipGoogle = true;
+        private const bool SkipOthers = false;
+
+        private static string ToMeasureString(Stopwatch watch, long operations, int padleft = 14)
+        {
+            // watch.ElapsedMilliseconds.ToString() + "ms"
+            double opsPerSecond = operations / watch.Elapsed.TotalSeconds / 1000;
+            string s = opsPerSecond.ToString("####0 K-Ops/Sec");
+            if (padleft > 0)
+            {
+                s = s.PadLeft(padleft, ' ');
+            }
+            return s;
+        }
+
+        public static bool ThreadLocalTypeModel { get; set; } = true;
 
         private static void Main(string[] args)
         {
-            Console.WriteLine("Protobuf-Net Performance Investigations v1.2.0");
+            Console.WriteLine("Protobuf-Net Performance Investigations v1.4.0");
             Console.WriteLine("  " + System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription + " on " + System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier + " with " + Environment.ProcessorCount.ToString() + " cores");
-            Console.WriteLine($"  Objects: {ObjectsForTesting}");
+            Console.WriteLine($"  Objects: {ObjectsForTesting.ToString("##,###,###,##0")}");
+            Console.WriteLine();
+            foreach (string s in args)
+            {
+                var splits = s.Split(new char[] { '=' });
+                if (splits.Length == 2)
+                {
+                    if (string.Equals(splits[0], "ThreadLocalTypeModel", StringComparison.OrdinalIgnoreCase))
+                    {
+                        ThreadLocalTypeModel = bool.Parse(splits[1]);
+                    }
+                }
+            }
+
+            if (ThreadLocalTypeModel)
+            {
+                Console.WriteLine("  One TypeModel per Thread");
+            }
+            else
+            {
+                Console.WriteLine("  One SHARED TypeModel for all Threads");
+            }
             Console.WriteLine();
 
             //protobuf-net preparations
@@ -34,16 +75,18 @@ namespace ConsoleApp
 
             //Google.Protobuf preparations
             var googleProtobufTestData = new List<byte[]>();
-            for (int i = 0; i < ObjectsForTesting; i++)
+            if (!SkipGoogle)
             {
-                using (var ms = new MemoryStream())
+                for (int i = 0; i < ObjectsForTesting; i++)
                 {
-                    Test.Create(i.ToString()).WriteTo(ms);
-                    var buffer = ms.ToArray();
-                    googleProtobufTestData.Add(buffer);
+                    using (var ms = new MemoryStream())
+                    {
+                        Test.Create(i.ToString()).WriteTo(ms);
+                        var buffer = ms.ToArray();
+                        googleProtobufTestData.Add(buffer);
+                    }
                 }
             }
-
             var warmupOutput = new Test[ObjectsForTesting];
 
             //Warmup ProtoBuf-Net (without measuring)
@@ -55,147 +98,174 @@ namespace ConsoleApp
 
             var output = new Test[ObjectsForTesting];
 
+            int firstMeasureColumn = 70;
             //Start measurements for ProtoBuf-Net
-            int[] degreeOfParallelism = new int[] { 2, 4, 6, 8, 10, 12, 16 };
+
+            int[] degreeOfParallelism = new int[] { 2, 4, 6, 8, 10, 12 };
+
+            if (Environment.ProcessorCount > 8)
+            {
+                degreeOfParallelism = new int[] { 2, 4, 6, 8, 10, 12, 16, 20 };
+            }
+
             var watch = new Stopwatch();
             int index = 0;
-            Console.Write("NET: without AsParallel (Deserialize): ");
+            Console.Write("NET: without AsParallel (Deserialize):".PadRight(firstMeasureColumn));
             watch.Restart();
             foreach (var x in protobufNetTestData)
             {
                 output[index++] = NetDeserialize<Test>(x);
             }
-            Console.WriteLine(watch.ElapsedMilliseconds.ToString() + "ms");
-
-            Console.Write($"   NET: with AsParallel (Deserialize with DegreeOfParallelism=default): ");
-            watch.Restart();
-            protobufNetTestData.AsParallel().WithExecutionMode(ParallelExecutionMode.ForceParallelism).Select((x, i) =>
-            {
-                output[i] = NetDeserialize<Test>(x);
-                return true;
-            }).All(_ => _);
-            Console.WriteLine(watch.ElapsedMilliseconds.ToString() + "ms");
+            Console.WriteLine(ToMeasureString(watch, ObjectsForTesting));
 
             foreach (int parallelism in degreeOfParallelism)
             {
-                Console.Write($"   NET: with AsParallel (Deserialize with DegreeOfParallelism={parallelism}): ");
+                Console.Write($"   NET: with AsParallel (Deserialize with DegreeOfParallelism={parallelism}):".PadRight(firstMeasureColumn));
                 watch.Restart();
                 protobufNetTestData.AsParallel().WithExecutionMode(ParallelExecutionMode.ForceParallelism).WithDegreeOfParallelism(parallelism).Select((x, i) =>
                 {
                     output[i] = NetDeserialize<Test>(x);
                     return true;
                 }).All(_ => _);
-                Console.WriteLine(watch.ElapsedMilliseconds.ToString() + "ms");
+                Console.WriteLine(ToMeasureString(watch, ObjectsForTesting));
             }
 
-            Console.Write("   NET: with Parallel.ForEach (Deserialize): ");
+            Console.Write($"   NET: with AsParallel (Deserialize with DegreeOfP.=default):".PadRight(firstMeasureColumn));
+            watch.Restart();
+            protobufNetTestData.AsParallel().WithExecutionMode(ParallelExecutionMode.ForceParallelism).Select((x, i) =>
+            {
+                output[i] = NetDeserialize<Test>(x);
+                return true;
+            }).All(_ => _);
+            Console.WriteLine(ToMeasureString(watch, ObjectsForTesting));
+
+            Console.Write("   NET: with Parallel.ForEach (Deserialize):".PadRight(firstMeasureColumn));
             watch.Restart();
             Parallel.ForEach(protobufNetTestData, () => 0, (x, pls, index, s) =>
             {
                 output[(int)index] = NetDeserialize<Test>(x);
                 return 0;
             }, _ => { });
-            Console.WriteLine(watch.ElapsedMilliseconds.ToString() + "ms");
+            Console.WriteLine(ToMeasureString(watch, ObjectsForTesting));
 
-            System.Threading.Thread.Sleep(300); // Rest a little bit!
-
-            //Warmup Google.Protobuf (without measuring)
-            googleProtobufTestData.AsParallel().WithExecutionMode(ParallelExecutionMode.ForceParallelism).Select((x, i) =>
+            if (!SkipGoogle)
             {
-                warmupOutput[i] = GoogleDeserialize<Test>(x);
-                return true;
-            }).All(_ => _);
+                //Warmup Google.Protobuf (without measuring)
+                googleProtobufTestData.AsParallel().WithExecutionMode(ParallelExecutionMode.ForceParallelism).Select((x, i) =>
+                {
+                    warmupOutput[i] = GoogleDeserialize<Test>(x);
+                    return true;
+                }).All(_ => _);
 
-            //Start measurements for Google.Protobuf
+                //Start measurements for Google.Protobuf
 
-            index = 0;
-            Console.Write("Google: without AsParallel (Deserialize): ");
-            watch.Restart();
-            foreach (var x in googleProtobufTestData)
-            {
-                output[index++] = GoogleDeserialize<Test>(x);
-            }
-            Console.WriteLine(watch.ElapsedMilliseconds.ToString() + "ms");
-
-            Console.Write($"   Google: with AsParallel (Deserialize with DegreeOfParallelism=default): ");
-            watch.Restart();
-            googleProtobufTestData.AsParallel().WithExecutionMode(ParallelExecutionMode.ForceParallelism).Select((x, i) =>
-            {
-                output[i] = GoogleDeserialize<Test>(x);
-                return true;
-            }).All(_ => _);
-            Console.WriteLine(watch.ElapsedMilliseconds.ToString() + "ms");
-
-            foreach (int parallelism in degreeOfParallelism)
-            {
-                Console.Write($"   Google: with AsParallel (Deserialize with DegreeOfParallelism={parallelism}): ");
+                index = 0;
+                Console.Write("Google: without AsParallel (Deserialize): ");
                 watch.Restart();
-                googleProtobufTestData.AsParallel().WithExecutionMode(ParallelExecutionMode.ForceParallelism).WithDegreeOfParallelism(parallelism).Select((x, i) =>
+                foreach (var x in googleProtobufTestData)
+                {
+                    output[index++] = GoogleDeserialize<Test>(x);
+                }
+                Console.WriteLine(watch.ElapsedMilliseconds.ToString() + "ms");
+
+                Console.Write($"   Google: with AsParallel (Deserialize with DegreeOfParallelism=default): ");
+                watch.Restart();
+                googleProtobufTestData.AsParallel().WithExecutionMode(ParallelExecutionMode.ForceParallelism).Select((x, i) =>
                 {
                     output[i] = GoogleDeserialize<Test>(x);
                     return true;
                 }).All(_ => _);
                 Console.WriteLine(watch.ElapsedMilliseconds.ToString() + "ms");
+
+                foreach (int parallelism in degreeOfParallelism)
+                {
+                    Console.Write($"   Google: with AsParallel (Deserialize with DegreeOfParallelism={parallelism}): ");
+                    watch.Restart();
+                    googleProtobufTestData.AsParallel().WithExecutionMode(ParallelExecutionMode.ForceParallelism).WithDegreeOfParallelism(parallelism).Select((x, i) =>
+                    {
+                        output[i] = GoogleDeserialize<Test>(x);
+                        return true;
+                    }).All(_ => _);
+                    Console.WriteLine(watch.ElapsedMilliseconds.ToString() + "ms");
+                }
+
+                Console.Write("   Google: with Parallel.ForEach (Deserialize): ");
+                watch.Restart();
+                Parallel.ForEach(googleProtobufTestData, () => 0, (x, pls, index, s) =>
+                {
+                    output[(int)index] = GoogleDeserialize<Test>(x);
+                    return 0;
+                }, _ => { });
+                Console.WriteLine(watch.ElapsedMilliseconds.ToString() + "ms");
             }
-
-            Console.Write("   Google: with Parallel.ForEach (Deserialize): ");
-            watch.Restart();
-            Parallel.ForEach(googleProtobufTestData, () => 0, (x, pls, index, s) =>
+            if (!SkipOthers)
             {
-                output[(int)index] = GoogleDeserialize<Test>(x);
-                return 0;
-            }, _ => { });
-            Console.WriteLine(watch.ElapsedMilliseconds.ToString() + "ms");
+                Console.Write("without AsParallel (DummyWork):".PadRight(firstMeasureColumn));
+                watch.Restart();
+                protobufNetTestData.Select((x, i) =>
+                {
+                    output[i] = DummyWork<Test>(x);
+                    return true;
+                }).All(_ => _);
+                Console.WriteLine(ToMeasureString(watch, ObjectsForTesting));
 
-            Console.Write("without AsParallel (DummyWork): ");
-            watch.Restart();
-            protobufNetTestData.Select((x, i) =>
-            {
-                output[i] = DummyWork<Test>(x);
-                return true;
-            }).All(_ => _);
-            Console.WriteLine(watch.ElapsedMilliseconds.ToString() + "ms");
+                Console.Write("   with AsParallel (DummyWork):".PadRight(firstMeasureColumn));
+                watch.Restart();
+                protobufNetTestData.AsParallel().WithExecutionMode(ParallelExecutionMode.ForceParallelism).Select((x, i) =>
+                {
+                    output[i] = DummyWork<Test>(x);
+                    return true;
+                }).All(_ => _);
+                Console.WriteLine(ToMeasureString(watch, ObjectsForTesting));
 
-            Console.Write("   with AsParallel (DummyWork): ");
-            watch.Restart();
-            protobufNetTestData.AsParallel().WithExecutionMode(ParallelExecutionMode.ForceParallelism).Select((x, i) =>
-            {
-                output[i] = DummyWork<Test>(x);
-                return true;
-            }).All(_ => _);
-            Console.WriteLine(watch.ElapsedMilliseconds.ToString() + "ms");
+                Console.Write("without AsParallel (ConstructionWork):".PadRight(firstMeasureColumn));
+                watch.Restart();
+                protobufNetTestData.Select((x, i) =>
+                {
+                    output[i] = ConstructionWork(x);
+                    return true;
+                }).All(_ => _);
+                Console.WriteLine(ToMeasureString(watch, ObjectsForTesting));
 
-            Console.Write("without AsParallel (ConstructionWork): ");
-            watch.Restart();
-            protobufNetTestData.Select((x, i) =>
-            {
-                output[i] = ConstructionWork(x);
-                return true;
-            }).All(_ => _);
-            Console.WriteLine(watch.ElapsedMilliseconds.ToString() + "ms");
+                Console.Write("   with AsParallel (ConstructionWork):".PadRight(firstMeasureColumn));
+                watch.Restart();
+                protobufNetTestData.AsParallel().WithExecutionMode(ParallelExecutionMode.ForceParallelism).Select((x, i) =>
+                {
+                    output[i] = ConstructionWork(x);
+                    return true;
+                }).All(_ => _);
+                Console.WriteLine(ToMeasureString(watch, ObjectsForTesting));
 
-            Console.Write("   with AsParallel (ConstructionWork): ");
-            watch.Restart();
-            protobufNetTestData.AsParallel().WithExecutionMode(ParallelExecutionMode.ForceParallelism).Select((x, i) =>
-            {
-                output[i] = ConstructionWork(x);
-                return true;
-            }).All(_ => _);
-            Console.WriteLine(watch.ElapsedMilliseconds.ToString() + "ms");
-
-            Console.Write("   with AsParallel (GenericConstructionWork): ");
-            watch.Restart();
-            protobufNetTestData.AsParallel().WithExecutionMode(ParallelExecutionMode.ForceParallelism).Select((x, i) =>
-            {
-                output[i] = GenericConstructionWork<Test>(x);
-                return true;
-            }).All(_ => _);
-            Console.WriteLine(watch.ElapsedMilliseconds.ToString() + "ms");
+                Console.Write("   with AsParallel (GenericConstructionWork):".PadRight(firstMeasureColumn));
+                watch.Restart();
+                protobufNetTestData.AsParallel().WithExecutionMode(ParallelExecutionMode.ForceParallelism).Select((x, i) =>
+                {
+                    output[i] = GenericConstructionWork<Test>(x);
+                    return true;
+                }).All(_ => _);
+                Console.WriteLine(ToMeasureString(watch, ObjectsForTesting));
+            }
         }
+
+        private static ThreadLocal<RuntimeTypeModel> ThreadRTM = new ThreadLocal<RuntimeTypeModel>(() =>
+        {
+            if (ThreadLocalTypeModel)
+            {
+                var rt = RuntimeTypeModel.Create($"ThreadID={Environment.CurrentManagedThreadId}");
+                rt.Add(typeof(Test), true);
+                //Console.WriteLine($"RuntimeTypeModel: {rt.ToString()}");
+                return rt;
+            }
+            else
+            {
+                return RuntimeTypeModel.Default;
+            }
+        });
 
         private static T NetDeserialize<T>(byte[] buffer)
         {
-            return Serializer.Deserialize<T>((ReadOnlySpan<byte>)buffer);
+            var model = ThreadRTM.Value; //RuntimeTypeModel.Default
+            return model.Deserialize<T>((ReadOnlySpan<byte>)buffer, default(T), null);
         }
 
         private static Test GoogleDeserialize<T>(byte[] buffer)
