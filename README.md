@@ -30,3 +30,5 @@ Modified the runtimeModel: it returns the provided InitValue withoud using real 
 ![image](https://user-images.githubusercontent.com/10084630/175536394-a9ff208f-0c34-49e6-a8cd-c6e603cce7a5.png)
 
 Speed is growing until 8 cores
+we get 12-15K Ops/Sec if we return at TypeModel
+we get 8K Ops/Sec if we return inside the first row of ProtoReader.State.DeserializeRootImpl
