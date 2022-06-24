@@ -35,19 +35,26 @@ namespace ConsoleApp
 
         public static int ObjectsForTesting { get; set; } = 2000000;
 
+        public static bool InitializeInstance { get; set; } = true;
         private static void Main(string[] args)
         {
-            Console.WriteLine("Protobuf-Net Performance Investigations v1.5.1");
+            Console.WriteLine("Protobuf-Net Performance Investigations v1.5.2");
             Console.WriteLine();
             foreach (string s in args)
             {
                 var splits = s.Split(new char[] { '=' });
                 if (splits.Length == 2)
                 {
+                    if (string.Equals(splits[0], "InitializeInstance", StringComparison.OrdinalIgnoreCase))
+                    {
+                        InitializeInstance = bool.Parse(splits[1]);
+                    }
+
                     if (string.Equals(splits[0], "ThreadLocalTypeModel", StringComparison.OrdinalIgnoreCase))
                     {
                         ThreadLocalTypeModel = bool.Parse(splits[1]);
                     }
+
                     if (string.Equals(splits[0], "Objects", StringComparison.OrdinalIgnoreCase))
                     {
                         ObjectsForTesting = int.Parse(splits[1])*1000;
@@ -64,9 +71,10 @@ namespace ConsoleApp
             Console.WriteLine($"  Runtime={System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier}");
             Console.WriteLine($"  ProcessorCount={System.Environment.ProcessorCount}");
             Console.WriteLine($"  Objects={ObjectsForTesting.ToString("##,###,###,##0")}");
+            Console.WriteLine();
             Console.WriteLine($"  ThreadLocalTypeModel={ThreadLocalTypeModel}");
             Console.WriteLine($"  IsLockFree={IsLockFree}");
-
+            Console.WriteLine($"  InitializeInstance={InitializeInstance}");
             Console.WriteLine();
 
             //protobuf-net preparations
@@ -77,7 +85,6 @@ namespace ConsoleApp
                 using (var ms = new MemoryStream())
                 {
                     ThreadRTM.Value.Serialize<Test>(ms, Test.Create(i.ToString()));
-                    //Serializer.Serialize<Test>(ms, Test.Create(i.ToString()));
                     protobufNetTestData.Add(ms.ToArray());
                 }
             }
@@ -101,7 +108,7 @@ namespace ConsoleApp
             //Warmup ProtoBuf-Net (without measuring)
             protobufNetTestData.AsParallel().WithExecutionMode(ParallelExecutionMode.ForceParallelism).Select((x, i) =>
             {
-                warmupOutput[i] = NetDeserialize<Test>(x);
+                warmupOutput[i] = NetDeserialize<Test>(x, InitializeInstance ? new Test(): null);
                 return true;
             }).All(_ => _);
 
@@ -123,7 +130,7 @@ namespace ConsoleApp
             watch.Restart();
             foreach (var x in protobufNetTestData)
             {
-                output[index++] = NetDeserialize<Test>(x);
+                output[index++] = NetDeserialize<Test>(x, InitializeInstance ? new Test() : null);
             }
             Console.WriteLine(ToMeasureString(watch, ObjectsForTesting));
 
@@ -133,7 +140,7 @@ namespace ConsoleApp
                 watch.Restart();
                 protobufNetTestData.AsParallel().WithExecutionMode(ParallelExecutionMode.ForceParallelism).WithDegreeOfParallelism(parallelism).Select((x, i) =>
                 {
-                    output[i] = NetDeserialize<Test>(x);
+                    output[i] = NetDeserialize<Test>(x, InitializeInstance ? new Test() : null);
                     return true;
                 }).All(_ => _);
                 Console.WriteLine(ToMeasureString(watch, ObjectsForTesting));
@@ -143,7 +150,7 @@ namespace ConsoleApp
             watch.Restart();
             protobufNetTestData.AsParallel().WithExecutionMode(ParallelExecutionMode.ForceParallelism).Select((x, i) =>
             {
-                output[i] = NetDeserialize<Test>(x);
+                output[i] = NetDeserialize<Test>(x, InitializeInstance ? new Test() : null);
                 return true;
             }).All(_ => _);
             Console.WriteLine(ToMeasureString(watch, ObjectsForTesting));
@@ -152,7 +159,7 @@ namespace ConsoleApp
             watch.Restart();
             Parallel.ForEach(protobufNetTestData, () => 0, (x, pls, index, s) =>
             {
-                output[(int)index] = NetDeserialize<Test>(x);
+                output[(int)index] = NetDeserialize<Test>(x, InitializeInstance ? new Test() : null);
                 return 0;
             }, _ => { });
             Console.WriteLine(ToMeasureString(watch, ObjectsForTesting));
@@ -273,10 +280,10 @@ namespace ConsoleApp
 
         });
 
-        private static T NetDeserialize<T>(byte[] buffer)
+        private static T NetDeserialize<T>(byte[] buffer, T initvalue)
         {
             var model = ThreadRTM.Value; //RuntimeTypeModel.Default
-            return model.Deserialize<T>((ReadOnlySpan<byte>)buffer, default(T), null);
+            return model.Deserialize<T>((ReadOnlySpan<byte>)buffer, initvalue, null);
         }
 
         private static Test GoogleDeserialize<T>(byte[] buffer)
