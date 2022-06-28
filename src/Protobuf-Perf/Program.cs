@@ -369,7 +369,9 @@ namespace ConsoleApp
             RuntimeTypeModel rt;
             if (ThreadLocalTypeModel)
             {
-                rt = RuntimeTypeModel.Create($"ThreadID={Environment.CurrentManagedThreadId}", lockFree: IsLockFree);
+                //TODO LockFree impl removed
+                //rt = RuntimeTypeModel.Create($"ThreadID={Environment.CurrentManagedThreadId}", lockFree: IsLockFree);
+                rt = RuntimeTypeModel.Create($"ThreadID={Environment.CurrentManagedThreadId}");
                 rt.Add(typeof(Test), true);
             }
             else
@@ -377,14 +379,6 @@ namespace ConsoleApp
                 rt = RuntimeTypeModel.Default;
             }
             rt[typeof(Test)].CompileInPlace();
-            //rt[typeof(Test)].SerializerType;
-            //var options = new RuntimeTypeModel.CompilerOptions();
-            //options.OutputPath = Directory.GetCurrentDirectory();
-            //var dll = rt.Compile(options);
-            ////var model = ThreadRTM.Value;
-            ////_dll = model.Compile("MySerializer", "DalSerializer.dll");
-            //Console.WriteLine("Serializer written to " + Directory.GetCurrentDirectory());
-
             return rt;
         });
 
