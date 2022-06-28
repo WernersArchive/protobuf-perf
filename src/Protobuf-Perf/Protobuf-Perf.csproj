@@ -13,8 +13,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\protobuf-net\src\protobuf-net.Core\protobuf-net.Core.csproj" />
-    <ProjectReference Include="..\..\..\protobuf-net\src\protobuf-net\protobuf-net.csproj" />
+    <ProjectReference Include="src\protobuf-net.Core\protobuf-net.Core.csproj" />
+    <ProjectReference Include="src\protobuf-net\protobuf-net.csproj" />
   </ItemGroup>
 
 </Project>

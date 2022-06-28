@@ -5,9 +5,9 @@ VisualStudioVersion = 17.2.32602.215
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Protobuf-Perf", "src\Protobuf-Perf\Protobuf-Perf.csproj", "{07D96E69-F371-4CF0-B9A8-9F64C352B5FC}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "protobuf-net", "..\protobuf-net\src\protobuf-net\protobuf-net.csproj", "{32AF7E82-FDAE-4401-A862-24E4C050ED01}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "protobuf-net", "src\protobuf-net\protobuf-net.csproj", "{32AF7E82-FDAE-4401-A862-24E4C050ED01}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "protobuf-net.Core", "..\protobuf-net\src\protobuf-net.Core\protobuf-net.Core.csproj", "{F943FF69-F9F4-4EAC-8DC7-3A0CF601C741}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "protobuf-net.Core", "src\protobuf-net.Core\protobuf-net.Core.csproj", "{F943FF69-F9F4-4EAC-8DC7-3A0CF601C741}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
