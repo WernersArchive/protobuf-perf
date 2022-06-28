@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Protobuf-Perf": {
+      "commandName": "Project",
+      "commandLineArgs": "ThreadLocalTypeModel=true IsLockFree=true Objects=100 InitializeInstance=true"
+    }
+  }
+}

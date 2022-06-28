@@ -9,8 +9,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="protobuf-net" Version="3.1.4" />
     <PackageReference Include="Google.Protobuf" Version="3.21.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\protobuf-net\src\protobuf-net.Core\protobuf-net.Core.csproj" />
+    <ProjectReference Include="..\..\..\protobuf-net\src\protobuf-net\protobuf-net.csproj" />
   </ItemGroup>
 
 </Project>
