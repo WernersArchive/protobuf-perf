@@ -4,10 +4,8 @@ using Google.Protobuf;
 using Google.Protobuf.Reflection;
 using ProtoBuf;
 
-namespace ConsoleApp
+namespace Benchmarks
 {
-    public partial class Program
-    {
         [ProtoContract]
         public sealed class Test : IMessage<Test>
         {
@@ -15,10 +13,11 @@ namespace ConsoleApp
 
             public static Test Create(string suffix, int numberOfLongs = 25)
             {
+                Random r = new Random();
                 long[] list = new long[numberOfLongs];
                 for (int i = 0; i < numberOfLongs; i++)
                 {
-                    list[i] = Random.Shared.Next();
+                    list[i] = r.Next();
                 };
 
                 return new Test()
@@ -103,5 +102,4 @@ namespace ConsoleApp
 
             MessageDescriptor IMessage.Descriptor => throw new NotImplementedException();
         }
-    }
 }

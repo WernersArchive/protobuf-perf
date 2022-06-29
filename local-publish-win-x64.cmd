@@ -6,6 +6,6 @@ set BUILD_CONFIGURATION=Release
 if exist "%OUTFOLDERPATH%\" rd %OUTFOLDERPATH% /S/Q >NUL
 dotnet clean --configuration %BUILD_CONFIGURATION% --verbosity quiet
 echo.
-dotnet publish --configuration "%BUILD_CONFIGURATION%" --verbosity quiet -o "%OUTFOLDERPATH%" --self-contained -r win-x64 -p:PublishSingleFile=true
+dotnet publish "src\Benchmarks\Benchmarks.csproj" --configuration "%BUILD_CONFIGURATION%" --verbosity quiet -o "%OUTFOLDERPATH%" --self-contained -r win-x64 -p:PublishSingleFile=true -f net5.0
 echo.
 pause

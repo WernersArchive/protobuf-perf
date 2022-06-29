@@ -10,6 +10,8 @@ namespace ProtoBuf
 {
     public partial class ProtoReader
     {
+        public static bool ShortCall { get; set; } = false;
+
         partial struct State
         {
             /// <summary>
@@ -74,7 +76,14 @@ namespace ProtoBuf
             internal static string ToString(ReadOnlySpan<byte> span)
             {
 #if PLAT_SPAN_OVERLOADS
-                return UTF8.GetString(span);
+                if (ProtoReader.ShortCall)
+                {
+                    return "xyz";
+                }
+                else
+                {
+                    return UTF8.GetString(span);
+                }
 #else
                 unsafe
                 {

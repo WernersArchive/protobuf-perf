@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Benchmarks;
 using Google.Protobuf;
 using ProtoBuf;
 using ProtoBuf.Meta;
@@ -201,7 +202,7 @@ namespace ConsoleApp
                 Console.Write($"   State: NO-OP with AsParallel:".PadRight(firstMeasureColumn));
                 protobufNetTestData.AsParallel().WithExecutionMode(ParallelExecutionMode.ForceParallelism).Select((x, i) =>
                 {
-                    var m = StateDeserialize<Test>(x, true, InitializeInstance ? new Test() : null);
+                    var m = ProtoReaderStateBenchmark.StateDeserialize<Test>(x, ThreadRTM.Value, true, InitializeInstance ? new Test() : null);
                     return true;
                 }).All(_ => _);
                 Console.WriteLine(ToMeasureString(watch, ObjectsForTesting));
@@ -210,7 +211,7 @@ namespace ConsoleApp
                 Console.Write($"   State: with AsParallel:".PadRight(firstMeasureColumn));
                 protobufNetTestData.AsParallel().WithExecutionMode(ParallelExecutionMode.ForceParallelism).Select((x, i) =>
                 {
-                    var m = StateDeserialize<Test>(x, false, InitializeInstance ? new Test() : null);
+                    var m = ProtoReaderStateBenchmark.StateDeserialize<Test>(x, ThreadRTM.Value,false, InitializeInstance ? new Test() : null);
                     return true;
                 }).All(_ => _);
                 Console.WriteLine(ToMeasureString(watch, ObjectsForTesting));
@@ -405,32 +406,32 @@ namespace ConsoleApp
             return initvalue;
         }
 
-        private static T StateDeserialize<T>(byte[] buffer, bool noOp, T initvalue)
-        {
-            var model = ThreadRTM.Value;
-            using (var state = ProtoReader.State.Create(buffer, model))
-            {
-                if (!noOp)
-                {
-                    int fieldNumber;
-                    int loops = 0;
-                    while ((fieldNumber = state.ReadFieldHeader()) > 0)
-                    {
-                        loops += 1;
-                        if (state.WireType == WireType.String)
-                        {
-                            state.ReadString();
-                        }
-                        else
-                        {
-                            Debug.Fail("not in this sample");
-                        };
-                    }
-                    Debug.Assert(loops == 2);
-                }
-            }
-            return initvalue;
-        }
+        //private static T StateDeserialize<T>(byte[] buffer, bool noOp, T initvalue)
+        //{
+        //    var model = ThreadRTM.Value;
+        //    using (var state = ProtoReader.State.Create(buffer, model))
+        //    {
+        //        if (!noOp)
+        //        {
+        //            int fieldNumber;
+        //            int loops = 0;
+        //            while ((fieldNumber = state.ReadFieldHeader()) > 0)
+        //            {
+        //                loops += 1;
+        //                if (state.WireType == WireType.String)
+        //                {
+        //                    state.ReadString();
+        //                }
+        //                else
+        //                {
+        //                    Debug.Fail("not in this sample");
+        //                };
+        //            }
+        //            Debug.Assert(loops == 2);
+        //        }
+        //    }
+        //    return initvalue;
+        //}
 
         private static Test GoogleDeserialize<T>(byte[] buffer)
         {

@@ -1,0 +1,23 @@
+{
+  "profiles": {
+    "Benchmarks": {
+      "commandName": "Project"
+    },
+    "Dry": {
+      "commandName": "Project",
+      "commandLineArgs": "--job dry --filter \"*\" -m"
+    },
+    "Info": {
+      "commandName": "Project",
+      "commandLineArgs": "--Info"
+    },
+    "Short": {
+      "commandName": "Project",
+      "commandLineArgs": "--job short --filter \"*\" -m"
+    },
+    "Long": {
+      "commandName": "Project",
+      "commandLineArgs": "--job long --filter \"*\" -m"
+    }
+  }
+}
