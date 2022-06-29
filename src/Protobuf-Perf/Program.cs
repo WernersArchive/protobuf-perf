@@ -7,7 +7,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Benchmarks;
 using Google.Protobuf;
-using ProtoBuf;
 using ProtoBuf.Meta;
 
 #pragma warning disable CS0162 // Unreachable code detected
@@ -21,7 +20,6 @@ namespace ConsoleApp
         private const bool SkipUTF8 = false;
         private const bool SkipGoogle = true;
         private const bool SkipWarmup = false;
-
 
         /// <summary>
         /// means dummy and construction
@@ -211,7 +209,7 @@ namespace ConsoleApp
                 Console.Write($"   State: with AsParallel:".PadRight(firstMeasureColumn));
                 protobufNetTestData.AsParallel().WithExecutionMode(ParallelExecutionMode.ForceParallelism).Select((x, i) =>
                 {
-                    var m = ProtoReaderStateBenchmark.StateDeserialize<Test>(x, ThreadRTM.Value,false, InitializeInstance ? new Test() : null);
+                    var m = ProtoReaderStateBenchmark.StateDeserialize<Test>(x, ThreadRTM.Value, false, InitializeInstance ? new Test() : null);
                     return true;
                 }).All(_ => _);
                 Console.WriteLine(ToMeasureString(watch, ObjectsForTesting));
@@ -222,7 +220,6 @@ namespace ConsoleApp
                 System.Threading.Thread.Sleep(3000);
 
                 watch.Restart();
-
 
                 Console.Write($"   UTF8: NOT Parallel:".PadRight(firstMeasureColumn));
                 for (int ii = 0; ii < ObjectsForTesting; ii++)
@@ -249,7 +246,6 @@ namespace ConsoleApp
                 for (int iii = 0; iii < ObjectsForTesting; iii++)
                 {
                     var m = Utf8SpanDeserialize<Test>(span, InitializeInstance ? new Test() : null);
-
                 }
 
                 //Utf8TestData.Select((x, i) =>
@@ -258,11 +254,6 @@ namespace ConsoleApp
                 //    return true;
                 //}).All(_ => _);
                 Console.WriteLine(ToMeasureString(watch, ObjectsForTesting));
-
-
-
-
-
             }
 
             if (!SkipGoogle)
@@ -444,7 +435,9 @@ namespace ConsoleApp
             {
                 for (int i = 0; i < 10000; i++)
                 {
+#pragma warning disable CS0219 // Variable is assigned but its value is never used
                     var x = 100 / 10;
+#pragma warning restore CS0219 // Variable is assigned but its value is never used
                 }
                 return default(T);
             }
