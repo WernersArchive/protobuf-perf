@@ -17,7 +17,7 @@ namespace Benchmarks
         private static void Main(string[] args)
         {
             Console.ForegroundColor = ConsoleColor.Magenta;
-            Console.WriteLine("ProtoBuf-Net Benchmarks v0.1.1");
+            Console.WriteLine("ProtoBuf-Net Benchmarks v0.2.0");
             Console.ResetColor();
             Console.WriteLine("");
             BenchmarkSwitcher.FromTypes(new System.Type[] { typeof(ProtoReaderStateBenchmark) }).Run(args, GetGlobalConfig());

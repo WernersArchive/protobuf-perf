@@ -12,26 +12,36 @@ namespace Benchmarks
 {
     public class ProtoReaderStateBenchmark
     {
+        public string SettingsTrace()
+        {
+            return string.Empty;
+        }
 
-        [Params(1000*1000)]
+        [Params(1000 * 1000)]
         public long Iterations { get; set; } = 1;
 
         [Params(true, false)]
         public bool ShortCall { get; set; }
 
-        private readonly byte[] DataAsArray;
+        internal byte[] DataAsArray { get; private set; } = Array.Empty<byte>();
 
-        public ProtoReaderStateBenchmark()
+        [GlobalSetup]
+        public void Setup()
         {
+            if (this.Iterations < 1) throw new InvalidOperationException(nameof(this.Iterations));
             for (int zz = 0; zz < this.Iterations; zz++)
             {
                 this.IterationItems.Add(zz);
             }
             using (var ms = new MemoryStream())
             {
-                this.ThreadRTM.Value!.Serialize<Test>(ms, Test.Create(99.ToString()));
+                this.ThreadRTM.Value!.Serialize<StringMessage>(ms, StringMessage.Create(99.ToString()));
                 DataAsArray = ms.ToArray();
             }
+        }
+
+        public ProtoReaderStateBenchmark()
+        {
         }
 
         internal readonly ThreadLocal<RuntimeTypeModel> ThreadRTM = new ThreadLocal<RuntimeTypeModel>(() =>
@@ -40,8 +50,8 @@ namespace Benchmarks
             //TODO LockFree impl removed
             //rt = RuntimeTypeModel.Create($"ThreadID={Environment.CurrentManagedThreadId}", lockFree: IsLockFree);
             rt = RuntimeTypeModel.Create($"ThreadID={Environment.CurrentManagedThreadId}");
-            rt.Add(typeof(Test), true);
-            rt[typeof(Test)].CompileInPlace();
+            rt.Add(typeof(StringMessage), true);
+            rt[typeof(StringMessage)].CompileInPlace();
             return rt;
         });
 
@@ -57,7 +67,7 @@ namespace Benchmarks
             ProtoReader.ShortCall = this.ShortCall;
             IterationItems.AsParallel().WithExecutionMode(ParallelExecutionMode.ForceParallelism).Select((x, i) =>
             {
-                var m = ProtoReaderStateBenchmark.StateDeserialize<Test>(this.DataAsArray, ThreadRTM.Value!, false, new Test());
+                var m = ProtoReaderStateBenchmark.StateDeserialize<StringMessage>(this.DataAsArray, ThreadRTM.Value!, false, new StringMessage());
                 return true;
             }).All(_ => _);
         }
@@ -67,12 +77,12 @@ namespace Benchmarks
         /// 4.7 sec/1 mio net6.0
         /// </summary>
         [Benchmark()]
-        public void ExecuteAsSpanInSeria()
+        public void ExecuteAsSpanInSerial()
         {
             ProtoReader.ShortCall = this.ShortCall;
             IterationItems.Select((x, i) =>
             {
-                var m = ProtoReaderStateBenchmark.StateDeserialize<Test>(this.DataAsArray, ThreadRTM.Value!, false, new Test());
+                var m = ProtoReaderStateBenchmark.StateDeserialize<StringMessage>(this.DataAsArray, ThreadRTM.Value!, false, new StringMessage());
                 return true;
             }).All(_ => _);
         }
