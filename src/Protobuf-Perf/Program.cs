@@ -10,6 +10,8 @@ namespace ConsoleApp
 {
     public class Program
     {
+        private const int LongPayload = 1000;
+        private const int Operations = 50000;
         private static void Main(string[] args)
         {
             Console.WriteLine("Protobuf-Net Performance Investigations v1.0.0");
@@ -17,11 +19,11 @@ namespace ConsoleApp
             Console.WriteLine();
             Serializer.PrepareSerializer<Test>();
             var list = new List<byte[]>();
-            for (int i = 0; i < 1000000; i++)
+            for (int i = 0; i < Operations; i++)
             {
                 using (var ms = new MemoryStream())
                 {
-                    Serializer.Serialize<Test>(ms, Test.Create(i.ToString()));
+                    Serializer.Serialize<Test>(ms, Test.Create(i.ToString(), LongPayload));
                     list.Add(ms.ToArray());
                 }
             }
@@ -110,7 +112,7 @@ namespace ConsoleApp
         [ProtoContract]
         public sealed class Test
         {
-            public static Test Create(string suffix, int numberOfLongs = 25)
+            public static Test Create(string suffix, int numberOfLongs )
             {
                 long[] list = new long[numberOfLongs];
                 for (int i = 0; i < numberOfLongs; i++)
